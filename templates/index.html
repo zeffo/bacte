@@ -49,6 +49,10 @@
                 datasetSelector.replaceChildren();
               }
               response.json().then((data) => {
+                if ("error" in data) {
+                  alert(data["error"]);
+                  return
+                }
                 for (let idx = 0; idx < data.length; idx++) {
                   let opt = document.createElement("option");
                   opt.value = idx;
