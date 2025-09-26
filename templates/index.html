@@ -1,0 +1,131 @@
+<html>
+  <head>
+    <title>
+      bacte data plot
+    </title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script type="module" defer>
+      const input = document.getElementById('FileInput');
+      const ctx = document.getElementById('Chart');
+      const metadata = document.getElementById('Metadata');
+      const datasetSelector = document.getElementById('datasetSelector');
+      var currentChart = null;
+
+
+      function setMetadata(dataset) {
+        let meta = dataset["metadata"]
+        let wavelength = meta["wavelength"]
+        let plate = meta["plate"]
+        let sample_group = meta["sample_group"]
+        let absorbance = meta["absorbance"]
+        metadata.textContent = `Wavelength: ${wavelength}nm, Plate: ${plate}, Sample Group: ${sample_group}, Absorbance: ${absorbance}`
+      }
+
+      function getDatasets(rows) {
+        let sampleKeys = Object.keys(rows[0]).filter(k => k != "Reading" && k != "avg. time [s]");
+        let datasets = sampleKeys.map((k, i) => ({
+          label: k,
+          data: rows,
+          parsing: {xAxisKey: "Reading", yAxisKey: k},
+          hidden: true
+        }));
+        return datasets
+      }
+
+      function getPeaks(rows) {
+        let sampleKeys = Object.keys(rows[0]).filter(k => k != "Reading" && k != "avg. time [s]");
+      }
+
+      const upload = (file) => {
+        let formData = new FormData();
+        formData.append("data-file", input.files[0]);
+        fetch("/plot", {
+          method: "POST",
+          body: formData
+        }).then(
+            response => {
+              if (currentChart != null) {
+                currentChart.destroy();
+                datasetSelector.replaceChildren();
+              }
+              response.json().then((data) => {
+                for (let idx = 0; idx < data.length; idx++) {
+                  let opt = document.createElement("option");
+                  opt.value = idx;
+                  opt.textContent = data[idx]["metadata"]["wavelength"];
+                  datasetSelector.appendChild(opt);
+                }
+                let datasets = getDatasets(data[0]["data"]);
+                setMetadata(data[0]);
+                const chart = new Chart(ctx, {
+                  type: "line",
+                  data: {
+                    datasets:  datasets,
+                  },
+                  options: {
+                    plugins: {
+                      legend: {
+                        display: true,
+                        position: "bottom",
+                      }
+                    },
+                    scales: {
+                      x: {
+                        type: "linear",
+                        title: { display: true, text: "Reading" }
+                      },
+                      y: { 
+                        type: "linear",
+                        title: { display: true, text: "Sample" } 
+                      }
+                    },
+                  }
+                });
+                currentChart = chart; 
+
+                document.getElementById("chartType").addEventListener("change", e => {
+                  if (currentChart != null) {
+                    const hiddenFlags = currentChart.data.datasets.map((_, i) => !currentChart.isDatasetVisible(i));
+                    currentChart.config.type = e.target.value;
+                    currentChart.data.datasets.forEach((ds, i) => {
+                      ds.hidden = hiddenFlags[i];
+                    });
+                    currentChart.update();
+                  }
+                });
+
+
+                datasetSelector.addEventListener("change", e => {
+                  let index = e.target.value;
+                  let dataset = getDatasets(data[index]["data"]);
+                  setMetadata(data[index])
+                  if (currentChart != null) {
+                    currentChart.data.datasets = datasets;
+                    currentChart.update();
+                  }
+                });
+              })
+            }
+        );
+      };
+
+      const onFileSelected = () => upload(input.files[0]);
+      input.addEventListener('change', onFileSelected, false);
+
+    </script>
+  </head>
+  <body>
+    <form>    
+      <input type="file" id="FileInput" />
+      <select id="datasetSelector"></select>
+      <select id="chartType">
+        <option value="line" selected>Line</option>
+        <option value="bar">Bar</option>
+        <option value="scatter">Scatter</option>
+      </select>
+      <!-- <button type="submit" id="FileSubmit"> upload </button> -->
+    </form>
+    <div id="Metadata"></div>
+    <canvas id="Chart"></canvas>
+  </body>
+</html>
