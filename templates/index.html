@@ -9,16 +9,26 @@
       const ctx = document.getElementById('Chart');
       const metadata = document.getElementById('Metadata');
       const datasetSelector = document.getElementById('datasetSelector');
+      const chartType = document.getElementById("chartType");
       var currentChart = null;
 
 
       function setMetadata(dataset) {
-        let meta = dataset["metadata"]
-        let wavelength = meta["wavelength"]
-        let plate = meta["plate"]
-        let sample_group = meta["sample_group"]
-        let absorbance = meta["absorbance"]
-        metadata.textContent = `Wavelength: ${wavelength}nm, Plate: ${plate}, Sample Group: ${sample_group}, Absorbance: ${absorbance}`
+        let meta = dataset["metadata"];
+        metadata.replaceChildren();
+        let children = ["wavelength", "plate", "sample_group", "absorbance"];
+        for (const child of children) {
+          let div = document.createElement("div");
+          let key = document.createElement("div");
+          key.className = "metaKey";
+          let value = document.createElement("div");
+          div.style["border"] = "1px solid #1e1e1e";
+          key.textContent = child.replace("_", " ");
+          value.textContent = meta[child] ? meta[child] : "-";
+          div.appendChild(key);
+          div.appendChild(value);
+          metadata.appendChild(div);
+        }
       }
 
       function getDatasets(rows) {
@@ -44,9 +54,12 @@
           body: formData
         }).then(
             response => {
+              datasetSelector.hidden = true;
+              chartType.hidden = true;
               if (currentChart != null) {
                 currentChart.destroy();
                 datasetSelector.replaceChildren();
+                metadata.replaceChildren();
               }
               response.json().then((data) => {
                 if ("error" in data) {
@@ -86,8 +99,10 @@
                   }
                 });
                 currentChart = chart; 
+                datasetSelector.hidden = false;
+                chartType.hidden = false;
 
-                document.getElementById("chartType").addEventListener("change", e => {
+                chartType.addEventListener("change", e => {
                   if (currentChart != null) {
                     const hiddenFlags = currentChart.data.datasets.map((_, i) => !currentChart.isDatasetVisible(i));
                     currentChart.config.type = e.target.value;
@@ -117,19 +132,76 @@
       input.addEventListener('change', onFileSelected, false);
 
     </script>
+    <style>
+
+    html, body {
+      height: 100%;
+      padding: 0;
+      margin: 0;
+    }
+
+    .flex {
+      display: flex;
+    }
+
+    .row {
+      flex-direction: row;
+    }
+
+    .col {
+      flex-direction: column;
+    }
+
+    #ChartControls {
+      padding: 0;
+      margin: 0;
+      gap: 10px;
+    }
+
+    #Header {
+      background: linear-gradient(45deg, #a6e3a1, #94e2d5, #89dceb);
+      border-bottom: 1px solid #1e1e1e;
+      justify-content: center;
+      padding: 10px;
+    }
+    
+    #Metadata {
+      padding: 10px;
+      gap: 20px;
+    }
+
+    #Metadata > div {
+      border-radius: 5px;
+      background-attachment: fixed;
+      background: linear-gradient(45deg, #f9e2af);
+      display: flex;
+      flex-direction: row;
+    }
+
+    #Metadata > div > div {
+      padding: 5px 10px;
+    }
+
+    .metaKey {
+      border-right: 1px solid #1e1e1e;
+    }
+
+    </style>
   </head>
   <body>
-    <form>    
-      <input type="file" id="FileInput" />
-      <select id="datasetSelector"></select>
-      <select id="chartType">
-        <option value="line" selected>Line</option>
-        <option value="bar">Bar</option>
-        <option value="scatter">Scatter</option>
-      </select>
-      <!-- <button type="submit" id="FileSubmit"> upload </button> -->
-    </form>
-    <div id="Metadata"></div>
+    <div id="Header" class="flex col">
+      <div id="ChartControls">    
+        <input type="file" id="FileInput" accept=".xlsx"/>
+        <select id="datasetSelector" hidden></select>
+        <select id="chartType" hidden>
+          <option value="line" selected>Line</option>
+          <option value="bar">Bar</option>
+          <option value="scatter">Scatter</option>
+        </select>
+      </div>
+    </div>
+    <div id="Metadata" class="flex row">
+    </div>
     <canvas id="Chart"></canvas>
   </body>
 </html>

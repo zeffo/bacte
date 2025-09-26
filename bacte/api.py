@@ -23,14 +23,16 @@ async def plot(
     list[dict[str, dict[str, int | None] | list[dict[str, list[Any]]]]]
     | litestar.Response[dict[str, str]]
 ):
+    parse_error = litestar.Response(
+        {"error": "could not parse spreadsheet"}, status_code=500
+    )
+
     content = BytesIO(await data.read())
     try:
         workbook = openpyxl.load_workbook(content)
     except OSError:
-        return litestar.Response(
-            {"error": "could not parse spreadsheet"}, status_code=500
-        )
+        return parse_error
     sheet = Parser.find_sheet(workbook) or workbook.worksheets[0]
     parser = Parser(sheet=sheet)
     parser.parse()
-    return [r.to_dict() for r in parser.readings]
+    return [r.to_dict() for r in parser.readings] or parse_error
