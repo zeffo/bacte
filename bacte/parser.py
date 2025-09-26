@@ -1,3 +1,4 @@
+from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
 from bacte.reading import Reading
@@ -41,7 +42,13 @@ class Parser:
         for reading in readings:
             r = Reading(meta=reading[0], data=reading[1])
             self.readings.append(r)
- 
+
+
+    @staticmethod
+    def find_sheet(workbook: Workbook) -> Worksheet | None:
+        for sheet in workbook.worksheets:
+            if sheet.title.lower().strip().startswith("absorbance"):
+                return sheet
 
 
 

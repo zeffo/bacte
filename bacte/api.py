@@ -19,10 +19,13 @@ async def home() -> Template:
 @litestar.post("/plot")
 async def plot(
     data: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
-) -> list[dict[str, dict[str, int | None] | list[dict[str, list[Any]]]]]:
+) -> list[dict[str, dict[str, int | None] | list[dict[str, list[Any]]]]] | litestar.Response[dict[str, str]]:
     content = BytesIO(await data.read())
-    workbook = openpyxl.load_workbook(content)
-    sheet = workbook.worksheets[0]
+    try:
+        workbook = openpyxl.load_workbook(content)
+    except OSError:
+        return litestar.Response({"error": "could not parse spreadsheet"}, status_code=500)
+    sheet = Parser.find_sheet(workbook) or workbook.worksheets[0]
     parser = Parser(sheet=sheet)
     parser.parse()
     return [
